@@ -3,12 +3,17 @@ import pandas as pd
 import os
 
 # 페이지 설정
-st.set_page_config(page_title="업무 스타일 프로파일링 시스템", layout="wide")
+st.set_page_config(page_title="품질혁신팀 업무 스타일 프로파일링 시스템", layout="wide")
+
+# ==========================================
+# [관리자 설정] 🔑 원하는 비밀번호를 여기에 적어주세요!
+# ==========================================
+ADMIN_PASSWORD = "정환휘"
 
 # 데이터 저장 파일 경로
 DATA_FILE = "survey_results.csv"
 
-# [첨부파일 '설문지.csv' 데이터 반영 - 30개 전체 문항]
+# [30개 전체 문항 및 선택지 데이터]
 SURVEY_QUESTIONS = [
     {"no": 1, "문항": "문제가 발생했을 때 가장 먼저 하는 행동은?", "A": "데이터를 확인한다", "B": "우선 빠르게 조치한다", "C": "관련자들과 소통한다", "D": "절차와 이력을 확인한다"},
     {"no": 2, "문항": "업무를 받을 때 선호하는 방식은?", "A": "근거와 배경 포함 설명", "B": "핵심만 빠르게 전달", "C": "대화 중심 설명", "D": "문서 및 절차 기준 설명"},
@@ -17,7 +22,7 @@ SURVEY_QUESTIONS = [
     {"no": 5, "문항": "고객 클레임 발생 시 나는?", "A": "원인 데이터를 분석한다", "B": "즉시 대응책을 추진한다", "C": "고객과 소통을 우선한다", "D": "이력과 절차를 정리한다"},
     {"no": 6, "문항": "업무 진행 시 가장 중요하게 생각하는 것은?", "A": "정확성", "B": "속도", "C": "협업", "D": "체계성"},
     {"no": 7, "문항": "보고를 할 때 나는?", "A": "근거 자료를 충분히 준비한다", "B": "핵심 결과 중심으로 설명한다", "C": "상대 반응을 보며 설명한다", "D": "문서 형식을 맞춰 정리한다"},
-    {"no": 8, "문항": "팀 프로젝트에서 가장 잘 맞는 역할은?", "A": "분석 담당", "B": "실행 담당", "C": "소통 담당", "D": "일정/문서 관리 담당"},
+    {"no": 8, "팀장/팀원": "팀 프로젝트에서 가장 잘 맞는 역할은?", "A": "분석 담당", "B": "실행 담당", "C": "소통 담당", "D": "일정/문서 관리 담당"},
     {"no": 9, "문항": "변경 사항이 발생하면 나는?", "A": "영향성을 검토한다", "B": "우선 실행 가능 여부를 본다", "C": "관련 부서와 공유한다", "D": "변경 이력을 관리한다"},
     {"no": 10, "문항": "협업 시 중요하게 생각하는 것은?", "A": "정확한 정보 공유", "B": "빠른 진행", "C": "원활한 관계", "D": "역할과 기준 명확화"},
     {"no": 11, "문항": "내가 가장 자신 있는 업무는?", "A": "데이터 분석", "B": "문제 해결 추진", "C": "커뮤니케이션", "D": "문서 관리"},
@@ -44,14 +49,13 @@ SURVEY_QUESTIONS = [
 
 TYPE_MAP = {"A": "분석형", "B": "실행형", "C": "조율형", "D": "관리형"}
 
-# 데이터 로드 함수 (★ParserError 예외 처리 보완)
+# 데이터 로드 함수 (오류 복구 예외처리 유지)
 def load_results():
-    default_df = pd.DataFrame(columns=["일시", "이름", "팀명", "최종유형", "분석형_개수", "실행형_개수", "조율형_개수", "관리형_개수"])
+    default_df = pd.DataFrame(columns=["일시", "이름", "팀명", "파트명", "최종유형", "분석형_개수", "실행형_개수", "조율형_개수", "관리형_개수"])
     if os.path.exists(DATA_FILE) and os.path.getsize(DATA_FILE) > 0:
         try:
             return pd.read_csv(DATA_FILE)
         except Exception:
-            # 파일이 깨졌거나 파싱 에러가 발생하면 기본 구조 반환
             return default_df
     return default_df
 
@@ -61,21 +65,25 @@ def save_results(new_row):
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     df.to_csv(DATA_FILE, index=False, encoding="utf-8-sig")
 
-# 메뉴
+# 메뉴 구성
 st.sidebar.title("📋 프로파일링 메뉴")
 menu = st.sidebar.radio("화면 이동", ["📝 스타일 진단하기", "📊 관리자 대시보드"])
 
 # --- 화면 1: 스타일 진단하기 ---
 if menu == "📝 스타일 진단하기":
     st.title("📝 업무 스타일 프로파일링 (Work Style Profiling)")
-    st.write("각 문항을 읽고 본인의 평소 일하는 스타일에 가장 가까운 항목을 선택해 주세요.")
+    st.write("품질혁신팀 워크샵을 위한 진단 페이지입니다. 문항을 읽고 본인의 평소 스타일을 골라주세요.")
     
     st.subheader("👤 참여자 정보 입력")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         user_name = st.text_input("이름", placeholder="예: 홍길동")
     with col2:
-        team_name = st.text_input("소속 팀명", placeholder="예: 품질혁신팀")
+        # 팀명 품질혁신팀 고정형 텍스트로 수정
+        st.text_input("소속 팀명", value="품질혁신팀", disabled=True)
+    with col3:
+        # 파트명 선택할 수 있도록 컴포넌트 추가
+        part_name = st.selectbox("소속 파트명", ["품질관리파트", "품질기획파트"])
         
     st.divider()
     st.subheader("✍️ 진단 문항 (총 30문항)")
@@ -99,8 +107,8 @@ if menu == "📝 스타일 진단하기":
     st.divider()
     
     if st.button("진단 결과 제출하기", type="primary", use_container_width=True):
-        if not user_name.strip() or not team_name.strip():
-            st.error("⚠️ 이름과 소속 팀명을 모두 입력해야 제출할 수 있습니다.")
+        if not user_name.strip():
+            st.error("⚠️ 성함을 정확히 입력해 주세요.")
         else:
             counts = {"분석형": 0, "실행형": 0, "조율형": 0, "관리형": 0}
             for idx, choice in user_responses.items():
@@ -110,7 +118,7 @@ if menu == "📝 스타일 진단하기":
             max_val = max(counts.values())
             highest_types = [k for k, v in counts.items() if v == max_val]
             
-            # 동점 개수에 따른 판정 가이드 규칙 적용
+            # 결과 산정 가이드 반영 (3개 겹치면 재설문, 2개 겹치면 혼합형)
             if len(highest_types) >= 3:
                 final_type = "재설문 필요 (성향 다중 중첩)"
             elif len(highest_types) == 2:
@@ -121,8 +129,9 @@ if menu == "📝 스타일 진단하기":
             current_time = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
             result_row = {
                 "일시": current_time,
-                "이름": user_name.replace(",", " "),  # CSV 깨짐 방지용 문자 치환
-                "팀명": team_name.replace(",", " "),
+                "이름": user_name.replace(",", " "),
+                "팀명": "품질혁신팀",
+                "파트명": part_name,
                 "최종유형": final_type,
                 "분석형_개수": counts["분석형"],
                 "실행형_개수": counts["실행형"],
@@ -133,7 +142,7 @@ if menu == "📝 스타일 진단하기":
             save_results(result_row)
             st.balloons()
             
-            st.success(f"🎉 {user_name}님의 진단이 완료되었습니다!")
+            st.success(f"🎉 {user_name}님의 진단 데이터가 안전하게 제출되었습니다.")
             st.markdown(f"### 🎯 {user_name}님의 대표 업무 스타일: **[{final_type}]**")
             
             my_score_df = pd.DataFrame(list(counts.items()), columns=["유형", "선택 수"])
@@ -141,70 +150,112 @@ if menu == "📝 스타일 진단하기":
 
 # --- 화면 2: 관리자 대시보드 ---
 elif menu == "📊 관리자 대시보드":
-    st.title("📊 업무 스타일 분석 대시보드")
+    st.title("📊 품질혁신팀 대시보드 분석 센터")
     
-    df_res = load_results()
+    # 🔒 [요청사항 구현] 비밀번호 잠금장치 컴포넌트 배치
+    input_pw = st.text_input("🔑 관리자 보안 인증 비밀번호를 입력해 주세요.", type="password")
     
-    if df_res.empty:
-        st.warning("📥 현재 수집된 진단 데이터가 없습니다. 먼저 설문을 진행해 주세요.")
-    else:
-        total_p = len(df_res)
-        st.metric("총 참여 팀원 수", f"{total_p} 명")
+    if input_pw == ADMIN_PASSWORD:
+        st.success("🔓 인증되었습니다. 데이터 관리 권한이 부여되었습니다.")
         st.divider()
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("👥 1. 최종 유형별 분포")
-            type_counts = df_res["최종유형"].value_counts().reset_index()
-            type_counts.columns = ["최종유형", "인원수"]
-            st.bar_chart(data=type_counts, x="최종유형", y="인원수", use_container_width=True)
-            
-        with col2:
-            st.subheader("📈 2. 팀 전체 성향 누적 합계")
-            total_a = df_res["분석형_개수"].sum()
-            total_b = df_res["실행형_개수"].sum()
-            total_c = df_res["조율형_개수"].sum()
-            total_d = df_res["관리형_개수"].sum()
-            
-            team_total_df = pd.DataFrame({
-                "업무 유형": ["분석형", "실행형", "조율형", "관리형"],
-                "누적 선택 수": [total_a, total_b, total_c, total_d]
-            })
-            st.bar_chart(data=team_total_df, x="업무 유형", y="누적 선택 수", use_container_width=True)
-            
-        st.divider()
+        df_res = load_results()
         
-        # 3. 품질혁신팀 맞춤형 역량/리스크 자동 해석 시스템
-        st.subheader("💡 3. 우리 팀 업무 성향 및 협업 리스크 리포트")
-        stats = {"분석형": total_a, "실행형": total_b, "조율형": total_c, "관리형": total_d}
-        sorted_stats = sorted(stats.items(), key=lambda x: x[1], reverse=True)
-        
-        strongest = sorted_stats[0][0]
-        weakest = sorted_stats[-1][0]
-        
-        cb1, cb2 = st.columns(2)
-        with cb1:
-            st.success(f"🔥 **팀 내 가장 우세한 성향: [{strongest}]**")
-            if strongest == "분석형": st.write("데이터 중심 사고와 철저한 원인 분석, 리스크 검토 능력이 매우 뛰어난 팀입니다.")
-            elif strongest == "실행형": st.write("빠른 실행과 추진력이 강점이며, 긴급 상황 및 현장 대응 속도가 탁월한 팀입니다.")
-            elif strongest == "조율형": st.write("커뮤니케이션 능력이 뛰어나며, 고객 대응 및 관계 조율에 큰 강점을 가진 팀입니다.")
-            elif strongest == "관리형": st.write("체계적인 운영과 표준화, ISO 관리 및 문서 관리가 정확하고 완벽한 팀입니다.")
+        if df_res.empty:
+            st.warning("📥 현재 수집된 데이터가 없습니다. 설문 응답이 쌓인 후 확인 가능합니다.")
+        else:
+            # 상단 기본 통계 현황 (기존 유지)
+            total_p = len(df_res)
+            st.metric("품질혁신팀 총 참여 인원", f"{total_p} 명")
+            st.divider()
             
-        with cb2:
-            st.error(f"🚨 **우리 팀의 잠재적 협업 리스크: [{weakest}] 성향 보완 필요**")
-            if weakest == "분석형": st.write("충분한 검토 없이 빠른 실행만 강조되어 품질 안정화나 데이터 유효성 리스크가 발생할 수 있습니다.")
-            elif weakest == "실행형": st.write("의사결정이 지나치게 신중해지거나 회의만 길어지고 실제 추진으로 이어지는 동력이 약해질 수 있습니다.")
-            elif weakest == "조율형": st.write("팀원 간 개별 플레이 성향이 짙어지거나 부서 간 사일로(장벽) 현상이 발생할 리스크가 있습니다.")
-            elif weakest == "관리형": st.write("업무 표준이나 체계적인 가이드가 부족하여 예외 상황 발생 시 프로세스가 누락되거나 꼬일 수 있습니다.")
+            # [기존 대시보드 1, 2번 레이아웃 유지]
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("👥 1. 최종 유형별 분포 (전체)")
+                type_counts = df_res["최종유형"].value_counts().reset_index()
+                type_counts.columns = ["최종유형", "인원수"]
+                st.bar_chart(data=type_counts, x="최종유형", y="인원수", use_container_width=True)
+                
+            with col2:
+                st.subheader("📈 2. 팀 전체 성향 누적 합계")
+                total_a = df_res["분석형_개수"].sum()
+                total_b = df_res["실행형_개수"].sum()
+                total_c = df_res["조율형_개_수"].sum() if "조율형_개수" in df_res.columns else df_res.iloc[:, 6].sum()
+                total_d = df_res["관리형_개수"].sum()
+                
+                team_total_df = pd.DataFrame({
+                    "업무 유형": ["분석형", "실행형", "조율형", "관리형"],
+                    "누적 선택 수": [total_a, total_b, total_c, total_d]
+                })
+                st.bar_chart(data=team_total_df, x="업무 유형", y="누적 선택 수", use_container_width=True)
+                
+            st.divider()
             
-        st.divider()
-        st.subheader("📋 4. 팀원별 진단 상세 raw data")
-        st.dataframe(df_res, use_container_width=True)
-        
-        csv_data = df_res.to_csv(index=False, encoding="utf-8-sig")
-        st.download_button(
-            label="📥 전체 결과 CSV 파일 다운로드", 
-            data=csv_data, 
-            file_name="team_work_style_total_results.csv", 
-            mime="text/csv"
-        )
+            # 🌟 [요청사항 구현] 파트별 통계 그래프 섹션 신설
+            st.subheader("📊 2-2. 파트별 업무 스타일 심층 비교 (추가 대시보드)")
+            st.write("품질관리파트와 품질기획파트 간의 성향 차이를 비교 분석합니다.")
+            
+            p_col1, p_col2 = st.columns(2)
+            
+            with p_col1:
+                st.markdown("#### 🔬 품질관리파트 최종 유형 비율")
+                qc_df = df_res[df_res["파트명"] == "품질관리파트"]
+                if not qc_df.empty:
+                    qc_counts = qc_df["최종유형"].value_counts().reset_index()
+                    qc_counts.columns = ["최종유형", "인원수"]
+                    st.bar_chart(data=qc_counts, x="최종유형", y="인원수", use_container_width=True)
+                else:
+                    st.caption("품질관리파트의 제출 데이터가 아직 없습니다.")
+                    
+            with p_col2:
+                st.markdown("#### 📝 품질기획파트 최종 유형 비율")
+                qp_df = df_res[df_res["파트명"] == "품질기획파트"]
+                if not qp_df.empty:
+                    qp_counts = qp_df["최종유형"].value_counts().reset_index()
+                    qp_counts.columns = ["최종유형", "인원수"]
+                    st.bar_chart(data=qp_counts, x="최종유형", y="인원수", use_container_width=True)
+                else:
+                    st.caption("품질기획파트의 제출 데이터가 아직 없습니다.")
+            
+            st.divider()
+            
+            # [기존 대시보드 3번 요약 리포트 레이아웃 유지]
+            st.subheader("💡 3. 우리 팀 업무 성향 및 협업 리스크 리포트")
+            stats = {"분석형": total_a, "실행형": total_b, "조율형": total_c, "관리형": total_d}
+            sorted_stats = sorted(stats.items(), key=lambda x: x[1], reverse=True)
+            
+            strongest = sorted_stats[0][0]
+            weakest = sorted_stats[-1][0]
+            
+            cb1, cb2 = st.columns(2)
+            with cb1:
+                st.success(f"🔥 **팀 내 가장 우세한 성향: [{strongest}]**")
+                if strongest == "분석형": st.write("데이터 중심 사고와 철저한 원인 분석, 리스크 검토 능력이 매우 뛰어난 팀입니다.")
+                elif strongest == "실행형": st.write("빠른 실행과 추진력이 강점이며, 긴급 상황 및 현장 대응 속도가 탁월한 팀입니다.")
+                elif strongest == "조율형": st.write("커뮤니케이션 능력이 뛰어나며, 고객 대응 및 관계 조율에 큰 강점을 가진 팀입니다.")
+                elif strongest == "관리형": st.write("체계적인 운영과 표준화, ISO 관리 및 문서 관리가 정확하고 완벽한 팀입니다.")
+                
+            with cb2:
+                st.error(f"🚨 **우리 팀의 잠재적 협업 리스크: [{weakest}] 성향 보완 필요**")
+                if weakest == "분석형": st.write("충분한 검토 없이 빠른 실행만 강조되어 품질 안정화나 데이터 유효성 리스크가 발생할 수 있습니다.")
+                elif weakest == "실행형": st.write("의사결정이 지나치게 신중해지거나 회의만 길어지고 실제 추진으로 이어지는 동력이 약해질 수 있습니다.")
+                elif weakest == "조율형": st.write("팀원 간 개별 플레이 성향이 짙어지거나 부서 간 사일로(장벽) 현상이 발생할 리스크가 있습니다.")
+                elif weakest == "관리형": st.write("업무 표준이나 체계적인 가이드가 부족하여 예외 상황 발생 시 프로세스가 누락되거나 꼬일 수 있습니다.")
+                
+            st.divider()
+            
+            # [기존 대시보드 4번 데이터 테이블 유지]
+            st.subheader("📋 4. 팀원별 진단 상세 raw data")
+            st.dataframe(df_res, use_container_width=True)
+            
+            csv_data = df_res.to_csv(index=False, encoding="utf-8-sig")
+            st.download_button(
+                label="📥 전체 결과 CSV 파일 다운로드", 
+                data=csv_data, 
+                file_name="team_work_style_total_results.csv", 
+                mime="text/csv"
+            )
+            
+    elif input_pw != "":
+        st.error("❌ 비밀번호가 올바르지 않습니다. 다시 입력해 주세요.")
