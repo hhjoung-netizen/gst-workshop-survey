@@ -322,16 +322,38 @@ elif menu == "📊 관리자 대시보드":
             
             # 🌟 [보완 요청사항] 보완된 전체 데이터 테이블 출력 및 다운로드
             st.subheader("📋 4. 팀원별 프로파일링 통합 상세 Raw Data")
-            st.write("첨부 파일 가이드라인의 모든 정성적 해석 지표(특징, 강점, 주의점, 추천 역할 등)가 통합 반영된 실시간 전사 데이터베이스입니다.")
+            st.write("첨부 파일 가이드라인의 모든 정성적 해석 지표가 통합 반영된 실시간 전사 데이터베이스입니다.")
             st.dataframe(df_res, use_container_width=True)
             
-            csv_data = df_res.to_csv(index=False, encoding="utf-8-sig")
-            st.download_button(
-                label="📥 전체 프로파일링 결과 마스터 엑셀(CSV) 다운로드", 
-                data=csv_data, 
-                file_name="quality_innovation_team_workstyle_matrix.csv", 
-                mime="text/csv"
-            )
+            # 엑셀(.xlsx) 파일로 변환하는 버퍼 생성 함수
+            import io
+            def to_excel(df):
+                output = io.BytesIO()
+                # xlsxwriter 또는 openpyxl 엔진 사용
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='프로파일링_결과')
+                processed_data = output.getvalue()
+                return processed_data
+            
+            # 진짜 엑셀 바이트 데이터 생성
+            try:
+                excel_data = to_excel(df_res)
+                
+                st.download_button(
+                    label="📥 전체 프로파일링 결과 마스터 엑셀(.xlsx) 다운로드", 
+                    data=excel_data, 
+                    file_name="quality_innovation_team_workstyle_matrix.xlsx", # 확장자를 xlsx로 변경
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            except Exception as e:
+                # 만약 openpyxl 라이브러리가 서버에 설치 안 되어 있을 경우를 대비한 안전망(CSV)
+                csv_data = df_res.to_csv(index=False, encoding="utf-8-sig")
+                st.download_button(
+                    label="📥 전체 결과 CSV 파일 다운로드 (엑셀 깨짐 시 방법1 참고)", 
+                    data=csv_data, 
+                    file_name="team_work_style_total_results.csv", 
+                    mime="text/csv"
+                )
             
     elif input_pw != "":
         st.error("❌ 비밀번호가 올바르지 않습니다. 다시 입력해 주세요.")
