@@ -474,11 +474,13 @@ if st.button("설문 제출 및 결과 보기"):
 
     st.info("모든 설문 결과는 survey_results.csv 파일로 자동 저장됩니다.")
 
-    # =========================
-    # 관리자용 결과 보기
-    # =========================
+# =========================
+# 관리자용 결과 보기
+# =========================
 
-    st.header("📁 팀 결과 현황")
+st.header("📁 팀 결과 현황")
+
+if os.path.exists(file_name):
 
     all_results = pd.read_csv(file_name)
 
@@ -494,7 +496,10 @@ if st.button("설문 제출 및 결과 보기"):
         "관리형 점수"
     ]
 
-    st.dataframe(all_results[display_columns], use_container_width=True)
+    st.dataframe(
+        all_results[display_columns],
+        use_container_width=True
+    )
 
     csv = all_results.to_csv(index=False).encode("utf-8-sig")
 
@@ -504,6 +509,9 @@ if st.button("설문 제출 및 결과 보기"):
         file_name="품질혁신팀_업무스타일_결과.csv",
         mime="text/csv"
     )
+
+else:
+    st.info("아직 저장된 설문 결과가 없습니다.")
 
 # =========================
 # 사이드바
