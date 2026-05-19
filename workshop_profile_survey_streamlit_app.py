@@ -3,193 +3,218 @@ import pandas as pd
 import os
 
 # 페이지 설정
-st.set_page_config(page_title="팀 역량 및 협업 설문 시스템", layout="wide")
+st.set_page_config(page_title="업무 스타일 프로파일링 시스템", layout="wide")
 
 # 데이터 저장 파일 경로
 DATA_FILE = "survey_results.csv"
 
-# [누락 없는 30개 전체 설문 문항 구성] 
-# 유형별로 각 5~6문항씩 총 30문항을 셋팅했습니다. 문항 텍스트는 필요시 따옴표 내부만 수정하시면 됩니다.
+# [엑셀 시트 기반 30개 전체 문항 및 선택지 완벽 반영]
 SURVEY_QUESTIONS = [
-    # 1. 소통 (Communication) - 6문항
-    {"유형": "소통", "문항": "우리 팀은 업무 관련 정보와 지식을 서로 투명하고 신속하게 공유합니까?"},
-    {"유형": "소통", "문항": "팀원들은 동료의 의견을 경청하며, 비난 없이 건설적인 피드백을 주고받습니까?"},
-    {"유형": "소통", "문항": "팀 내에서 자신의 의견이나 제안을 자유롭고 솔직하게 표현할 수 있습니까?"},
-    {"유형": "소통", "문항": "업무 지시나 요청 사항이 모호하지 않고 명확하게 전달됩니까?"},
-    {"유형": "소통", "문항": "회의는 목적이 명확하며, 모든 참석자가 적극적으로 의견을 개진하는 분위기입니까?"},
-    {"유형": "소통", "문항": "감정적인 대립을 지양하고 업무 중심의 이성적인 소통이 이루어지고 있습니까?"},
-
-    # 2. 협업 (Collaboration) - 6문항
-    {"유형": "협업", "문항": "팀 목표 달성을 위해 개인이나 파트 간의 경계를 넘어 적극적으로 협력합니까?"},
-    {"유형": "협업", "문항": "각 팀원의 역할과 책임(R&R)이 명확하게 분담되어 있습니까?"},
-    {"유형": "협업", "문항": "동료가 업무 과부하로 어려움을 겪을 때 자발적으로 도와주는 문화가 있습니까?"},
-    {"유형": "협업", "문항": "팀원 간의 역량과 전문성을 신뢰하고 업무를 맡깁니까?"},
-    {"유형": "협업", "문항": "협업 과정에서 발생하는 결과물이나 성과가 공정하게 공유된다고 생각하십니까?"},
-    {"유형": "협업", "문항": "타 부서나 외부 파트너와의 협업이 유기적이고 원활하게 진행됩니까?"},
-
-    # 3. 갈등관리 (Conflict Management) - 6문항
-    {"유형": "갈등관리", "문항": "의견 충돌이나 갈등이 발생했을 때 이를 피하지 않고 직시하여 해결하려고 합니까?"},
-    {"유형": "갈등관리", "문항": "갈등 해결 과정에서 특정 개인의 일방적인 양보가 아닌 윈-윈(Win-Win) 방안을 모색합니까?"},
-    {"유형": "갈등관리", "문항": "팀 내 갈등이 발생했을 때 리더나 제3자가 중재 역할을 적절히 수행합니까?"},
-    {"유형": "갈등관리", "문항": "과거의 갈등이나 앙금이 현재의 업무 협업에 악영향을 미치지 않습니까?"},
-    {"유형": "갈등관리", "문항": "서로 다른 일하는 방식이나 성향의 차이를 인정하고 존중합니까?"},
-    {"유형": "갈등관리", "문항": "실수나 실패를 책망하기보다 원인을 분석하고 함께 대안을 찾는 분위기입니까?"},
-
-    # 4. 리더십 및 방향성 (Leadership) - 6문항
-    {"유형": "리더십", "문항": "우리 팀의 단기/장기 목표와 비전이 명확히 제시되고 있습니까?"},
-    {"유형": "리더십", "문항": "리더는 의사결정을 합리적이고 타이밍에 맞게 내리고 있습니까?"},
-    {"유형": "리더십", "문항": "팀원들의 성장과 역량 개발을 위한 피드백 및 기회가 적절히 제공됩니까?"},
-    {"유형": "리더십", "문항": "리더는 팀원들의 애로사항이나 고충을 경청하고 해결하기 위해 노력합니까?"},
-    {"유형": "리더십", "문항": "업무 성과에 대한 인정과 보상(칭찬, 격려 포함)이 적절하게 이루어집니까?"},
-    {"유형": "리더십", "문항": "리더는 공정하고 일관성 있는 기준에 따라 팀을 운영합니까?"},
-
-    # 5. 조직문화 및 몰입 (Culture & Engagement) - 6문항
-    {"유형": "조직문화", "문항": "우리 팀은 새로운 아이디어나 업무 방식을 시도하는 것에 개방적입니까?"},
-    {"유형": "조직문화", "문항": "불필요한 보고나 형식적인 절차 없이 효율적으로 일하는 문화가 정착되어 있습니까?"},
-    {"유형": "조직문화", "문항": "팀원들은 자신이 하고 있는 업무에 대해 자부심과 책임감을 느낍니까?"},
-    {"유형": "조직문화", "문항": "적절한 업무량과 유연성을 통해 일과 삶의 균형(Work-Life Balance)을 유지하고 있습니까?"},
-    {"유형": "조직문화", "문항": "팀 내에 심리적 안정감이 형성되어 있어 모르는 것을 편하게 물어볼 수 있습니까?"},
-    {"유형": "조직문화", "문항": "현재 우리 팀의 전반적인 사기와 업무 몰입도는 높은 편입니까?"}
+    {"no": 1, "문항": "문제가 발생했을 때 가장 먼저 하는 행동은?", "A": "데이터를 확인한다", "B": "우선 빠르게 조치한다", "C": "관련자들과 소통한다", "D": "절차와 이력을 확인한다"},
+    {"no": 2, "문항": "업무를 받을 때 선호하는 방식은?", "A": "근거와 배경 포함 설명", "B": "핵심만 빠르게 전달", "C": "대화 중심 설명", "D": "문서 및 절차 기준 설명"},
+    {"no": 3, "문항": "회의에서 나는 주로?", "A": "논리와 데이터를 제시한다", "B": "결론을 빠르게 정리한다", "C": "분위기를 조율한다", "D": "회의 내용을 기록한다"},
+    {"no": 4, "문항": "업무 스트레스를 가장 많이 받는 상황은?", "A": "데이터 부족", "B": "결정 지연", "C": "갈등 상황", "D": "기준 없는 변경"},
+    {"no": 5, "문항": "고객 클레임 발생 시 나는?", "A": "원인 데이터를 분석한다", "B": "즉시 대응책을 추진한다", "C": "고객과 소통을 우선한다", "D": "이력과 절차를 정리한다"},
+    {"no": 6, "문항": "업무 진행 시 가장 중요하게 생각하는 것은?", "A": "정확성", "B": "속도", "C": "협업", "D": "체계성"},
+    {"no": 7, "문항": "보고를 할 때 나는?", "A": "근거 자료를 충분히 준비한다", "B": "핵심 결과 중심으로 설명한다", "C": "상대 반응을 보며 설명한다", "D": "문서 형식을 맞춰 정리한다"},
+    {"no": 8, "문항": "팀 프로젝트에서 가장 잘 맞는 역할은?", "A": "분석 담당", "B": "실행 담당", "C": "소통 담당", "D": "일정/문서 관리 담당"},
+    {"no": 9, "문항": "변경 사항이 발생하면 나는?", "A": "영향성을 검토한다", "B": "우선 실행 가능 여부를 본다", "C": "관련 부서와 공유한다", "D": "변경 이력을 관리한다"},
+    {"no": 10, "문항": "협업 시 중요하게 생각하는 것은?", "A": "정확한 정보 공유", "B": "빠른 진행", "C": "원활한 관계", "D": "역할과 기준 명확화"},
+    {"no": 11, "문항": "내가 가장 자신 있는 업무는?", "A": "데이터 분석", "B": "문제 해결 추진", "C": "커뮤니케이션", "D": "문서 관리"},
+    {"no": 12, "문항": "업무 우선순위를 정할 때 나는?", "A": "리스크를 분석한다", "B": "긴급도를 우선한다", "C": "팀 상황을 고려한다", "D": "계획과 절차를 따른다"},
+    {"no": 13, "문항": "갑작스러운 일정 변경이 생기면?", "A": "영향 분석부터 한다", "B": "바로 대응한다", "C": "주변과 조율한다", "D": "계획을 재정리한다"},
+    {"no": 14, "문항": "문제가 반복 발생하면 나는?", "A": "데이터 추세를 분석한다", "B": "개선 활동을 추진한다", "C": "관련자 의견을 수집한다", "D": "표준화를 검토한다"},
+    {"no": 15, "문항": "가장 성취감을 느끼는 순간은?", "A": "문제 원인을 밝혔을 때", "B": "결과를 만들었을 때", "C": "팀워크가 좋아졌을 때", "D": "체계가 안정화됐을 때"},
+    {"no": 16, "문항": "업무를 시작할 때 나는?", "A": "충분히 검토 후 시작한다", "B": "일단 실행하면서 조정한다", "C": "주변과 협의 후 시작한다", "D": "계획을 세우고 시작한다"},
+    {"no": 17, "문항": "회의 분위기가 길어지면 나는?", "A": "논점을 정리한다", "B": "결론을 촉구한다", "C": "분위기를 부드럽게 만든다", "D": "회의 내용을 정리한다"},
+    {"no": 18, "문항": "업무 실수가 발생하면 나는?", "A": "원인을 먼저 분석한다", "B": "우선 해결부터 한다", "C": "관계 영향을 신경쓴다", "D": "프로세스를 수정한다"},
+    {"no": 19, "문항": "협업 시 가장 답답한 상황은?", "A": "논리적이지 못할 때", "B": "행동이 느릴 때", "C": "독단적으로 행동할 때", "D": "규칙을 안 지킬 때"},
+    {"no": 20, "문항": "새로운 업무가 주어지면 나는?", "A": "관련 정보를 수집한다", "B": "일단 시도해 본다", "C": "도움을 줄 사람을 찾는다", "D": "매뉴얼이 있는지 확인한다"},
+    {"no": 21, "문항": "피드백을 줄 때 내가 중시하는 것은?", "A": "객관적 사실과 데이터", "B": "개선 방향과 행동 요령", "C": "상대방의 감정과 동기부여", "D": "기준 준수 여부 및 보완점"},
+    {"no": 22, "문항": "동료가 평가하는 나의 장점은?", "A": "신중하고 꼼꼼하다", "B": "과감하고 신속하다", "C": "친근하고 협조적이다", "D": "정확하고 체계적이다"},
+    {"no": 23, "문항": "업무 마감 기한이 다가오면 나는?", "A": "내용의 완성도를 검토한다", "B": "밤을 새워서라도 끝낸다", "C": "팀원들과 분담하여 해결한다", "D": "일정에 맞춰 단계를 통제한다"},
+    {"no": 24, "문항": "의견 충돌이 생겼을 때 나의 대처는?", "A": "논리적 근거로 설득한다", "B": "빠르게 타협점을 찾는다", "C": "상대 의견 경청 후 조율한다", "D": "기존 원칙과 가이드를 따른다"},
+    {"no": 25, "문항": "업무 계획을 세울 때 나의 스타일은?", "A": "예상 리스크까지 상세히 기록", "B": "굵직한 목표 중심으로 유연하게", "C": "역할 분담과 소통 계획 위주", "D": "일정별 단계와 산출물 중심"},
+    {"no": 26, "문항": "동료의 일하는 방식 중 선호하는 타입은?", "A": "논리적이고 똑똑한 사람", "B": "행동이 빠르고 화끈한 사람", "C": "배려심 있고 소통이 잘되는 사람", "D": "약속을 잘 지키고 철저한 사람"},
+    {"no": 27, "문항": "내가 생각하는 이상적인 팀의 모습은?", "A": "전문성이 높은 조직", "B": "성과와 실행력이 높은 조직", "C": "인간미 있고 단합이 잘되는 조직", "D": "질서와 체계가 잡힌 조직"},
+    {"no": 28, "문항": "업무 인수인계를 할 때 나는?", "A": "배경과 기술적 노하우까지 설명", "B": "중요 포인트와 긴급 건 위주 설명", "C": "상황별 대면 가이드 및 팁 공유", "D": "매뉴얼과 파일 링크 위주로 정리"},
+    {"no": 29, "문항": "회의 준비를 할 때 나는?", "A": "사전 자료를 정밀하게 분석", "B": "회의용 핵심 어젠다만 준비", "C": "참석자 조율 및 사전 의견 수집", "D": "회의 순서 및 양식 사전 세팅"},
+    {"no": 30, "문항": "조직에서 나의 핵심 가치는 무엇인가?", "A": "문제의 본질과 원인 규명", "B": "돌파구를 찾고 성과 창출", "C": "조직 내 신뢰와 협업 시너지", "D": "안정적인 시스템 구축 및 유지"}
 ]
+
+# 보기 알파벳을 실제 업무스타일 유형 명칭으로 매핑
+TYPE_MAP = {"A": "분석형", "B": "실행형", "C": "조율형", "D": "관리형"}
 
 # 데이터 로드 함수
 def load_results():
     if os.path.exists(DATA_FILE) and os.path.getsize(DATA_FILE) > 0:
         return pd.read_csv(DATA_FILE)
-    return pd.DataFrame(columns=["일시", "이름", "팀명", "유형", "문항", "점수"])
+    return pd.DataFrame(columns=["일시", "이름", "팀명", "최종유형", "분석형_개수", "실행형_개수", "조율형_개수", "관리형_개수"])
 
 # 데이터 저장 함수
-def save_results(new_rows):
+def save_results(new_row):
     df = load_results()
-    df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     df.to_csv(DATA_FILE, index=False, encoding="utf-8-sig")
 
 # 사이드바 메뉴 네비게이션
-st.sidebar.title("📋 프로젝트 메뉴")
-menu = st.sidebar.radio("화면 이동", ["📝 설문 참여하기", "📊 관리자 대시보드"])
+st.sidebar.title("📋 프로파일링 메뉴")
+menu = st.sidebar.radio("화면 이동", ["📝 스타일 진단하기", "📊 관리자 대시보드"])
 
-# --- 화면 1: 설문 참여하기 ---
-if menu == "📝 설문 참여하기":
-    st.title("📝 팀 성향 및 협업 설문조사")
-    st.write("모든 문항(총 30문항)을 읽고 본인의 생각을 솔직하게 점수로 선택해 주세요.")
-    st.caption("💡 1점: 전혀 아님 | 2점: 아님 | 3점: 보통 | 4점: 그렇음 | 5점: 매우 그렇음")
+# --- 화면 1: 성향 진단하기 ---
+if menu == "📝 스타일 진단하기":
+    st.title("📝 업무 스타일 프로파일링(Work Style Profiling)")
+    st.write("각 문항을 읽고 본인이 업무할 때 가장 가깝다고 생각하는 항목을 한 가지 선택해 주세요.")
+    st.caption("※ 본 진단은 우열 판단이 아닌 서로의 협업 스타일을 이해하기 위한 도구입니다.")
     
     st.subheader("👤 참여자 정보 입력")
     col1, col2 = st.columns(2)
     with col1:
         user_name = st.text_input("이름", placeholder="예: 홍길동")
     with col2:
-        team_name = st.text_input("소속 팀명", placeholder="예: 개발팀, 인사팀")
+        team_name = st.text_input("소속 팀명", placeholder="예: 품질혁신팀")
         
     st.divider()
-    st.subheader("✍️ 설문 문항 (30문항)")
+    st.subheader("✍️ 진단 문항 (총 30문항)")
     
-    # 응답 저장용 딕셔너리
     user_responses = {}
     
-    # 30개 문항 루프 실행
-    for idx, item in enumerate(SURVEY_QUESTIONS):
-        st.markdown(f"**Q{idx+1}. [{item['유형']}] {item['문항']}**")
-        score = st.radio(
-            f"점수 선택 (Q{idx+1})", 
-            options=[1, 2, 3, 4, 5], 
-            index=2, # 기본값 3점(보통)
-            horizontal=True, 
-            key=f"q_{idx}"
+    # 30개 문항 루프 실행 (누락 없음)
+    for item in SURVEY_QUESTIONS:
+        idx = item["no"]
+        st.markdown(f"**Q{idx}. {item['문항']}**")
+        
+        # 라디오 버튼으로 A, B, C, D 중 선택 (화면에는 실제 엑셀 텍스트 표시)
+        choice = st.radio(
+            f"선택 (Q{idx})",
+            options=["A", "B", "C", "D"],
+            format_func=lambda x: f"({x}) {item[x]}",
+            key=f"q_{idx}",
+            label_visibility="collapsed"
         )
-        user_responses[idx] = score
-        st.write("") # 간격 띄우기
+        user_responses[idx] = choice
+        st.write("") # 가독성을 위한 여백
         
     st.divider()
     
-    # 제출 버튼
-    if st.button("설문 최종 제출하기", type="primary", use_container_width=True):
+    if st.button("진단 결과 제출하기", type="primary", use_container_width=True):
         if not user_name.strip() or not team_name.strip():
-            st.error("⚠️ 오류: 이름과 소속 팀명을 반드시 입력하셔야 설문을 제출할 수 있습니다.")
+            st.error("⚠️ 오류: 이름과 소속 팀명을 모두 입력하셔야 제출할 수 있습니다.")
         else:
+            # 유형별 선택 개수 카운트
+            counts = {"분석형": 0, "실행형": 0, "조율형": 0, "관리형": 0}
+            for idx, choice in user_responses.items():
+                type_name = TYPE_MAP[choice]
+                counts[type_name] += 1
+                
+            # 최고 점수 찾기 (동점 시 혼합형 판정 로직)
+            max_val = max(counts.values())
+            highest_types = [k for k, v in counts.items() if v == max_val]
+            
+            # 동점 점수가 3개 이상일 때 재설문 권고 사항 안내 포함 판정
+            if len(highest_types) >= 3:
+                final_type = "재설문 필요 (성향 다중 중첩)"
+            elif len(highest_types) == 2:
+                final_type = f"{highest_types[0]} + {highest_types[1]} 혼합형"
+            else:
+                final_type = highest_types[0]
+                
+            # 결과 저장용 딕셔너리 구축
             current_time = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-            new_data_list = []
+            result_row = {
+                "일시": current_time,
+                "이름": user_name,
+                "팀명": team_name,
+                "최종유형": final_type,
+                "분석형_개수": counts["분석형"],
+                "실행형_개수": counts["실행형"],
+                "조율형_개수": counts["조율형"],
+                "관리형_개수": counts["관리형"]
+            }
             
-            # 30개 문항에 대한 응답을 행 데이터로 빌드
-            for idx, item in enumerate(SURVEY_QUESTIONS):
-                new_data_list.append({
-                    "일시": current_time,
-                    "이름": user_name,
-                    "팀명": team_name,
-                    "유형": item["유형"],
-                    "문항": item["문항"],
-                    "점수": user_responses[idx]
-                })
-            
-            save_results(new_data_list)
+            save_results(result_row)
             st.balloons()
-            st.success(f"🎉 성공적으로 제출되었습니다! 감사합니다, {user_name}님.")
+            
+            # 개인 결과 즉시 출력
+            st.success(f"🎉 {user_name}님의 업무 스타일 프로파일링이 완료되었습니다!")
+            st.markdown(f"### 🎯 {user_name}님의 대표 업무 스타일: **[{final_type}]**")
+            
+            # 나의 유형별 차트
+            my_score_df = pd.DataFrame(list(counts.items()), columns=["유형", "선택 수"])
+            st.bar_chart(data=my_score_df, x="유형", y="선택 수")
 
 # --- 화면 2: 관리자 대시보드 ---
 elif menu == "📊 관리자 대시보드":
-    st.title("📊 팀 설문 결과 통합 분석 대시보드")
+    st.title("📊 품질혁신팀 업무 스타일 대시보드")
     
     df_res = load_results()
     
     if df_res.empty:
-        st.warning("📥 수집된 설문 데이터가 없습니다. 먼저 [설문 참여하기] 탭에서 설문을 진행해 주세요.")
+        st.warning("📥 현재 수집된 진단 데이터가 없습니다. 먼저 설문을 진행해 주세요.")
     else:
-        # 0. 상단 KPI 요약
-        total_p = df_res["이름"].nunique()
-        total_t = df_res["팀명"].nunique()
-        
-        kpi1, kpi2 = st.columns(2)
-        kpi1.metric("총 설문 응답자 수", f"{total_p} 명")
-        kpi2.metric("진단 참여 팀 수", f"{total_t} 개 팀")
+        # KPI 요약 지표
+        total_p = len(df_res)
+        st.metric("총 참여 팀원 수", f"{total_p} 명")
         st.divider()
         
-        # 1. 5대 유형별 평균 점수 차트
-        st.subheader("💡 1. 5대 역량 유형별 평균 점수")
-        type_avg = df_res.groupby("유형")["점수"].mean().reset_index()
-        # 가독성을 위해 점수순으로 정렬
-        type_avg = type_avg.sort_values(by="점수", ascending=False)
-        st.bar_chart(data=type_avg, x="유형", y="점수", use_container_width=True)
+        col1, col2 = st.columns(2)
         
-        # 2. 팀 강점 및 약점 분석 (Top 3 / Bottom 3 문항 추출)
-        st.subheader("💪 2. 팀 내부 강점 및 ⚠️ 잠재적 약점 요인 (문항별)")
-        q_avg = df_res.groupby(["유형", "문항"])["점수"].mean().reset_index().sort_values(by="점수", ascending=False)
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            st.success("🔥 우리 팀의 주요 강점 (평균 상위 3개 항목)")
-            for i, row in q_avg.head(3).iterrows():
-                st.write(f"- **[{row['유형']}]** {row['문항']} \n  👉 **평균 {row['점수']:.2f}점**")
-        with c2:
-            st.error("🚨 우리 팀의 관리 필요 약점 (평균 하위 3개 항목)")
-            # 하위 항목은 역순으로 보여줌
-            for i, row in q_avg.tail(3).iloc[::-1].iterrows():
-                st.write(f"- **[{row['유형']}]** {row['문항']} \n  👉 **평균 {row['점수']:.2f}점**")
-                
-        st.divider()
-        
-        # 3. 협업 리스크 진단 (부정 평가 비율 점검)
-        st.subheader("⚡ 3. 협업 리스크 관리 요인")
-        risk_threshold = 2.5
-        low_scores = df_res[df_res["점수"] <= risk_threshold]
-        
-        if not low_scores.empty:
-            st.warning(f"⚠️ 전체 답변 중 부정적 평가({risk_threshold}점 이하)를 받은 리스크 항목이 총 {len(low_scores)}건 발견되었습니다.")
-            risk_summary = low_scores.groupby("유형").size().reset_index(name="리스크 감지 건수(문항 수)").sort_values(by="리스크 감지 건수(문항 수)", ascending=False)
-            st.dataframe(risk_summary, use_container_width=True, hide_index=True)
-        else:
-            st.info("🎉 안심 항목: 모든 문항과 유형에서 협업 리스크가 감지되지 않았으며 점수가 안정적입니다.")
+        with col1:
+            st.subheader("👥 1. 우리 팀 업무 스타일 분포")
+            type_counts = df_res["최종유형"].value_counts().reset_index()
+            type_counts.columns = ["최종유형", "인원수"]
+            st.bar_chart(data=type_counts, x="최종유형", y="인원수", use_container_width=True)
+            
+        with col2:
+            st.subheader("📈 2. 팀 전체 선택지 누적 총합")
+            total_a = df_res["분석형_개수"].sum()
+            total_b = df_res["실행형_개수"].sum()
+            total_c = df_res["조율형_개수"].sum()
+            total_d = df_res["관리형_개수"].sum()
+            
+            team_total_df = pd.DataFrame({
+                "업무 유형": ["분석형", "실행형", "조율형", "관리형"],
+                "누적 선택 수": [total_a, total_b, total_c, total_d]
+            })
+            st.bar_chart(data=team_total_df, x="업무 유형", y="누적 선택 수", use_container_width=True)
             
         st.divider()
         
-        # 4. 로 데이터 테이블 및 내보내기 기능
-        st.subheader("📋 4. 팀원별 설문 상세 raw data")
+        # 3. 데이터 기반 팀 강점/약점 및 협업 리스크 리포트
+        st.subheader("💡 3. 우리 팀 역량 진단 및 협업 리스크 리포트")
+        
+        stats = {"분석형": total_a, "실행형": total_b, "조율형": total_c, "관리형": total_d}
+        sorted_stats = sorted(stats.items(), key=lambda x: x[1], reverse=True)
+        
+        strongest = sorted_stats[0][0]
+        weakest = sorted_stats[-1][0]
+        
+        cb1, cb2 = st.columns(2)
+        with cb1:
+            st.success(f"🔥 **팀 내 우세 성향: [{strongest}]**")
+            if strongest == "분석형": st.write("데이터 중심 사고와 철저한 원인 분석, 리스크 검토 능력이 매우 뛰어난 팀입니다.")
+            elif strongest == "실행형": st.write("빠른 실행과 추진력이 강점이며, 긴급 상황 및 현장 대응 속도가 탁월한 팀입니다.")
+            elif strongest == "조율형": st.write("커뮤니케이션 능력이 뛰어나며, 고객 대응 및 관계 조율에 큰 강점을 가진 팀입니다.")
+            elif strongest == "관리형": st.write("체계적인 운영과 표준화, ISO 관리 및 문서 관리가 정확하고 완벽한 팀입니다.")
+            
+        with cb2:
+            st.error(f"🚨 **잠재적 협업 리스크: [{weakest}] 성향 보완 필요**")
+            if weakest == "분석형": st.write("충분한 검토 없이 빠른 실행만 강조되어 품질 안정화나 데이터 유효성 리스크가 발생할 수 있습니다.")
+            elif weakest == "실행형": st.write("의사결정이 지나치게 신중해지거나 회의만 길어지고 실제 추진으로 이어지는 동력이 약해질 수 있습니다.")
+            elif weakest == "조율형": st.write("팀원 간 개별 플레이 성향이 짙어지거나 부서 간 사일로(장벽) 현상이 발생할 리스크가 있습니다.")
+            elif weakest == "관리형": st.write("업무 표준이나 체계적인 가이드가 부족하여 예외 상황 발생 시 프로세스가 누락되거나 꼬일 수 있습니다.")
+            
+        st.divider()
+        
+        # 4. 상세 결과 확인 및 파일 내보내기
+        st.subheader("📋 4. 팀원별 진단 상세 raw data")
         st.dataframe(df_res, use_container_width=True)
         
-        # 엑셀 깨짐 방지를 위한 utf-8-sig 인코딩 적용
+        # 다운로드 기능
         csv_data = df_res.to_csv(index=False, encoding="utf-8-sig")
         st.download_button(
-            label="📥 전체 결과 CSV 파일 다운로드", 
+            label="📥 전체 결과 CSV 파일 백업 다운로드", 
             data=csv_data, 
-            file_name="team_survey_total_results.csv", 
+            file_name="team_work_style_total_results.csv", 
             mime="text/csv"
         )
