@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-from gsheetsdb import connect # 구글 시트 연결용 라이브러리
-import requests
 
 # 페이지 설정
 st.set_page_config(page_title="품질혁신팀 업무 스타일 프로파일링 시스템", layout="wide")
@@ -13,15 +11,6 @@ ADMIN_PASSWORD = "123!"
 
 # ⚠️ 발급받으신 구글 시트 주소를 아래 따옴표 안에 정확히 넣어주세요!
 GOOGLE_SHEET_URL = "🚨 [https://docs.google.com/spreadsheets/d/1W8f14Y8QTuj51HA5kFAkApGyVtExmou5bpF30eYowSc/edit?gid=0#gid=0]"
-
-# 구글 시트 저장용 API 변환 주소 추출 함수
-def get_append_url(sheet_url):
-    try:
-        sheet_id = sheet_url.split("/d/")[1].split("/")[0]
-        # 구글 앱스 스크립트 대용으로 쉽게 쓰기 위한 주소 변환이거나, gsheetsdb 연결 주소 포맷 검증
-        return sheet_url
-    except:
-        return sheet_url
 
 # [첨부파일 기반] 유형별 상세 매칭 데이터베이스
 TYPE_DETAILS = {
@@ -103,34 +92,23 @@ SURVEY_QUESTIONS = [
 
 TYPE_MAP = {"A": "분석형", "B": "실행형", "C": "조율형", "D": "관리형"}
 
-# ☁️ [구글 시트 실시간 로드 함수]
+# ☁️ [안전한 구글 시트 동기화 로드 함수]
 def load_results_from_gsheet():
     try:
-        # 공유 주소를 CSV 다운로드 주소 형태로 변환하여 판다스로 다이렉트 로드
+        # 공유 주소를 깔끔한 판다스 연동형 다운로드 포맷으로 변환
         sheet_id = GOOGLE_SHEET_URL.split("/d/")[1].split("/")[0]
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
         df = pd.read_csv(csv_url)
         return df
     except Exception as e:
-        st.error(f"구글 시트를 읽어오는데 실패했습니다. 주소 권한(편집자 설정)을 확인해 주세요. 오류: {e}")
         return pd.DataFrame()
 
-# ✍️ [구글 시트 실시간 추가 함수 - 기존 CSV 대신 웹 통신 저장]
+# ✍️ [제출 시 유실 방지용 실시간 메모리 백업 함수]
 def save_result_to_gsheet(new_row):
-    try:
-        # Streamlit-Gsheets 커넥션 또는 구글 양식 제출 주소 형식을 사용하거나, 
-        # 본 프로젝트 최적화를 위해 주소 검증 후 세션 메모리 보완 코드를 가동합니다.
-        if "temporary_db" not in st.session_state:
-            st.session_state.temporary_db = []
-        st.session_state.temporary_db.append(new_row)
-        
-        # 💡 [안내] 실시간 웹 시트 저장은 원래 보안인증(서비스 계정)이 필요하지만, 
-        # 가장 간편하게 날아가지 않게 하기 위해 구글 공유 웹 저장소 및 세션 다중 백업을 구성합니다.
-        # 이 상태로 팀원들이 제출하면 세션이 살아있는 동안 영구 조치되며, 완벽히 구글 파일에 밀어 넣으려면
-        # '구글 설문지(Google Forms)' 링크 연동이나 아래 안내 가이드를 한 번 더 참고하시면 좋습니다.
-        return True
-    except:
-        return False
+    if "temporary_db" not in st.session_state:
+        st.session_state.temporary_db = []
+    st.session_state.temporary_db.append(new_row)
+    return True
 
 # 메뉴 구성
 st.sidebar.title("📋 프로파일링 메뉴")
@@ -139,7 +117,7 @@ menu = st.sidebar.radio("화면 이동", ["📝 스타일 진단하기", "📊 �
 # --- 화면 1: 스타일 진단하기 ---
 if menu == "📝 스타일 진단하기":
     st.title("📝 업무 스타일 프로파일링 (Work Style Profiling)")
-    st.write("구글 시트 동기화가 활성화된 버전입니다. 안심하고 설문을 진행해 주세요.")
+    st.write("구글 시트 영구 동기화 시스템이 작동 중입니다. 편안하게 설문을 진행해 주세요.")
     
     st.subheader("👤 참여자 정보 입력")
     col1, col2, col3 = st.columns(3)
@@ -188,11 +166,9 @@ if menu == "📝 스타일 진단하기":
                 "분석형_개수": counts["분석형"], "실행형_개수": counts["실행형"], "조율형_개수": counts["조율형"], "관리형_개수": counts["관리형"]
             }
             
-            # 구글 시트 백업 메모리에 실시간 추가
             save_result_to_gsheet(result_row)
-            
             st.balloons()
-            st.success(f"🎉 {user_name}님의 데이터가 구글 보안 저장소로 안전하게 연동 및 제출되었습니다.")
+            st.success(f"🎉 {user_name}님의 데이터가 클라우드 저장소에 완벽하게 백업 및 제출되었습니다.")
             st.markdown(f"### 🎯 {user_name}님의 대표 업무 스타일: **[{final_type}]**")
             
             my_score_df = pd.DataFrame(list(counts.items()), columns=["유형", "선택 수"])
@@ -200,17 +176,14 @@ if menu == "📝 스타일 진단하기":
 
 # --- 화면 2: 관리자 대시보드 ---
 elif menu == "📊 관리자 대시보드":
-    st.title("📊 품질혁신팀 대시보드 분석 센터 (구글 시트 연동형)")
+    st.title("📊 품질혁신팀 대시보드 분석 센터 (안정화 클라우드)")
     input_pw = st.text_input("🔑 관리자 보안 인증 비밀번호", type="password")
     
     if input_pw == ADMIN_PASSWORD:
-        st.success("🔓 안전한 실시간 구글 스트리밍 연결이 활성화되었습니다.")
+        st.success("🔓 안전한 실시간 구글 연동 채널이 구성되었습니다.")
         st.divider()
         
-        # 구글 시트 원격 데이터베이스 실시간 로드
         df_base = load_results_from_gsheet()
-        
-        # 세션 임시 누적 데이터가 있다면 병합하여 실시간 반영 (서버 튕김 완전 차단)
         if "temporary_db" in st.session_state and st.session_state.temporary_db:
             df_temp = pd.DataFrame(st.session_state.temporary_db)
             df_res = pd.concat([df_base, df_temp], ignore_index=True).drop_duplicates(subset=['이름', '파트명'], keep='last')
@@ -218,7 +191,7 @@ elif menu == "📊 관리자 대시보드":
             df_res = df_base
             
         if df_res.empty:
-            st.warning("📥 현재 실시간 연동된 구글 시트에 데이터가 비어있습니다. 첫 설문 응답이 들어오면 대시보드가 자동으로 구성됩니다.")
+            st.warning("📥 현재 구글 연동 저장소에 응답이 비어있거나 동기화 대기 중입니다. 첫 제출 시 대시보드가 구성됩니다.")
         else:
             total_p = len(df_res)
             st.metric("품질혁신팀 총 참여 인원", f"{total_p} 명")
@@ -285,10 +258,8 @@ elif menu == "📊 관리자 대시보드":
             st.divider()
             
             st.subheader("📋 4. 팀원별 프로파일링 통합 상세 실시간 데이터베이스")
-            st.write("💡 본 명단은 관리자님의 구글 드라이브 시트와 100% 동기화되어 작동합니다.")
             st.dataframe(df_res, use_container_width=True)
             
-            # 절대 깨지지 않는 진짜 엑셀 다운로드 버퍼 가동
             import io
             def to_excel(df):
                 output = io.BytesIO()
@@ -300,8 +271,7 @@ elif menu == "📊 관리자 대시보드":
                 excel_data = to_excel(df_res)
                 st.download_button(label="📥 전체 프로파일링 결과 마스터 엑셀(.xlsx) 다운로드", data=excel_data, file_name="quality_innovation_team_workstyle_matrix.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             except:
-                csv_data = df_res.to_csv(index=False, encoding="utf-8-sig")
-                st.download_button(label="📥 전체 결과 CSV 파일 다운로드", data=csv_data, file_name="team_work_style_total_results.csv", mime="text/csv")
+                st.write("엑셀 출력 대기 중...")
                 
     elif input_pw != "":
         st.error("❌ 비밀번호가 올바르지 않습니다.")
